@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ترحال AI</string>
+    <string name="logo_placeholder">شعار ترحال AI (مكان مخصص للشعار)</string>
+    <string name="logo_subtitle">مكتب سفريات وخدمات سفر متكامل</string>
+
+    <!-- Navigation Section Titles -->
+    <string name="nav_home">الرئيسية</string>
+    <string name="nav_clients_travelers">المسافرون والعملاء</string>
+    <string name="nav_trips_bookings">الرحلات والحجوزات</string>
+    <string name="nav_traveler_tracking">متابعة المسافر</string>
+    <string name="nav_digital_marketing">التسويق الإلكتروني للسفريات</string>
+    <string name="nav_operations_center">مركز العمليات</string>
+    <string name="nav_ai_center">الذكاء الاصطناعي</string>
+    <string name="nav_settings">الإعدادات</string>
+
+    <!-- Screen Subtitles / Placeholders -->
+    <string name="home_welcome">مرحبًا بك في ترحال AI</string>
+    <string name="home_desc">نظام إدارة مكتب السفريات الذكي الأول والمطوّر لتلبية كافة احتياجات السفر والرحلات.</string>
+
+    <string name="clients_travelers_desc">إدارة شاملة لسجلات العملاء والمسافرين وبيانات وثائقهم.</string>
+    <string name="trips_bookings_desc">إدارة رحلات السفر بالحافلات والطيران، وحجوزات التذاكر والفنادق.</string>
+    <string name="traveler_tracking_desc">متابعة حية لمراحل سفر المسافرين وخطوات الرحلة خطوة بخطوة.</string>
+    <string name="digital_marketing_desc">إعداد حملات تسويقية وتصميم العروض الترويجية للسفريات.</string>
+    <string name="operations_center_desc">مراقبة حركات السفر اليومية والإحصائيات والتقارير المالية والتشغيلية.</string>
+    <string name="ai_center_desc">مساعد ذكي لتحليل بيانات الرحلات واقتراح تحسينات للخدمات والتواصل.</string>
+    <string name="settings_desc">تخصيص بيانات المكتب، المستخدمين، والمفضّلات.</string>
+
+    <string name="section_under_dev">هذا القسم جاهز وهيكله مكتمل، وسيتم إضافة الوظائف التفصيلية في المراحل القادمة.</string>
+    <string name="quick_actions">الوصول السريع للأقسام</string>
+</resources>
