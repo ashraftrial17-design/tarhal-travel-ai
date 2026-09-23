@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,14 +35,21 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.tirhal.ai.R
 import com.tirhal.ai.ui.screens.HomeScreen
 import com.tirhal.ai.ui.screens.SectionScreen
+import com.tirhal.ai.ui.screens.clients.AddEditClientScreen
+import com.tirhal.ai.ui.screens.clients.ClientDetailScreen
+import com.tirhal.ai.ui.screens.clients.ClientViewModel
+import com.tirhal.ai.ui.screens.clients.ClientsTravelersListScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +65,9 @@ fun MainAppNavigation() {
         val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
 
         val currentScreen = Screen.navItems.find { it.route == currentRoute } ?: Screen.Home
+        val isSubScreen = currentRoute.startsWith("client_detail") || currentRoute.startsWith("client_add_edit")
+
+        val clientViewModel: ClientViewModel = viewModel()
 
         ModalNavigationDrawer(
             drawerState = drawerState,
@@ -129,37 +138,39 @@ fun MainAppNavigation() {
         ) {
             Scaffold(
                 topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = stringResource(id = currentScreen.titleResId),
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    if (drawerState.isClosed) drawerState.open() else drawerState.close()
-                                }
-                            }) {
-                                Icon(
-                                    imageVector = Icons.Default.Menu,
-                                    contentDescription = "القائمة"
+                    if (!isSubScreen) {
+                        TopAppBar(
+                            title = {
+                                Text(
+                                    text = stringResource(id = currentScreen.titleResId),
+                                    style = MaterialTheme.typography.titleLarge
                                 )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                            },
+                            navigationIcon = {
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        if (drawerState.isClosed) drawerState.open() else drawerState.close()
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Menu,
+                                        contentDescription = "القائمة"
+                                    )
+                                }
+                            },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                                navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         )
-                    )
+                    }
                 }
             ) { innerPadding ->
                 NavHost(
                     navController = navController,
                     startDestination = Screen.Home.route,
-                    modifier = Modifier.padding(innerPadding)
+                    modifier = Modifier.padding(if (!isSubScreen) innerPadding else androidx.compose.foundation.layout.PaddingValues(0.dp))
                 ) {
                     composable(Screen.Home.route) {
                         HomeScreen(
@@ -175,7 +186,46 @@ fun MainAppNavigation() {
                         )
                     }
 
-                    Screen.navItems.filter { it != Screen.Home }.forEach { screen ->
+                    composable(Screen.ClientsTravelers.route) {
+                        ClientsTravelersListScreen(
+                            viewModel = clientViewModel,
+                            onClientClick = { id -> navController.navigate("client_detail/$id") },
+                            onAddClientClick = { navController.navigate("client_add_edit") },
+                            onEditClientClick = { id -> navController.navigate("client_add_edit?clientId=$id") }
+                        )
+                    }
+
+                    composable(
+                        route = "client_detail/{clientId}",
+                        arguments = listOf(navArgument("clientId") { type = NavType.LongType })
+                    ) { backStackEntry ->
+                        val clientId = backStackEntry.arguments?.getLong("clientId") ?: 0L
+                        ClientDetailScreen(
+                            clientId = clientId,
+                            viewModel = clientViewModel,
+                            onBackClick = { navController.popBackStack() },
+                            onEditClick = { id -> navController.navigate("client_add_edit?clientId=$id") },
+                            onDeleted = { navController.popBackStack() }
+                        )
+                    }
+
+                    composable(
+                        route = "client_add_edit?clientId={clientId}",
+                        arguments = listOf(navArgument("clientId") {
+                            type = NavType.LongType
+                            defaultValue = 0L
+                        })
+                    ) { backStackEntry ->
+                        val clientId = backStackEntry.arguments?.getLong("clientId")
+                        AddEditClientScreen(
+                            clientId = clientId,
+                            viewModel = clientViewModel,
+                            onBackClick = { navController.popBackStack() },
+                            onSaved = { navController.popBackStack() }
+                        )
+                    }
+
+                    Screen.navItems.filter { it != Screen.Home && it != Screen.ClientsTravelers }.forEach { screen ->
                         composable(screen.route) {
                             SectionScreen(screen = screen)
                         }
