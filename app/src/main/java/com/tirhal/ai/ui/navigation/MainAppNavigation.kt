@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,14 +41,19 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.tirhal.ai.R
+import com.tirhal.ai.ui.screens.AICenterScreen
+import com.tirhal.ai.ui.screens.BookingsScreen
+import com.tirhal.ai.ui.screens.ClientsScreen
+import com.tirhal.ai.ui.screens.DigitalMarketingScreen
+import com.tirhal.ai.ui.screens.FollowUpTrackingScreen
 import com.tirhal.ai.ui.screens.HomeScreen
-import com.tirhal.ai.ui.screens.SectionScreen
+import com.tirhal.ai.ui.screens.OperationsCenterScreen
+import com.tirhal.ai.ui.screens.SettingsScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppNavigation() {
-    // Force RTL layout direction across the app for proper Arabic UI rendering
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
         val navController = rememberNavController()
         val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
@@ -175,10 +179,32 @@ fun MainAppNavigation() {
                         )
                     }
 
-                    Screen.navItems.filter { it != Screen.Home }.forEach { screen ->
-                        composable(screen.route) {
-                            SectionScreen(screen = screen)
-                        }
+                    composable(Screen.ClientsTravelers.route) {
+                        ClientsScreen()
+                    }
+
+                    composable(Screen.TripsBookings.route) {
+                        BookingsScreen()
+                    }
+
+                    composable(Screen.TravelerTracking.route) {
+                        FollowUpTrackingScreen()
+                    }
+
+                    composable(Screen.DigitalMarketing.route) {
+                        DigitalMarketingScreen()
+                    }
+
+                    composable(Screen.OperationsCenter.route) {
+                        OperationsCenterScreen()
+                    }
+
+                    composable(Screen.AICenter.route) {
+                        AICenterScreen()
+                    }
+
+                    composable(Screen.Settings.route) {
+                        SettingsScreen()
                     }
                 }
             }
