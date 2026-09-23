@@ -48,6 +48,7 @@ import com.tirhal.ai.ui.screens.DigitalMarketingScreen
 import com.tirhal.ai.ui.screens.FollowUpTrackingScreen
 import com.tirhal.ai.ui.screens.HomeScreen
 import com.tirhal.ai.ui.screens.OperationsCenterScreen
+import com.tirhal.ai.ui.screens.ReportsAnalyticsScreen
 import com.tirhal.ai.ui.screens.SettingsScreen
 import kotlinx.coroutines.launch
 
@@ -197,6 +198,18 @@ fun MainAppNavigation() {
 
                     composable(Screen.OperationsCenter.route) {
                         OperationsCenterScreen()
+                    }
+
+                    composable(Screen.ReportsAnalytics.route) {
+                        ReportsAnalyticsScreen(
+                            onOpenClientProfile = {
+                                navController.navigate(Screen.ClientsTravelers.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        )
                     }
 
                     composable(Screen.AICenter.route) {
