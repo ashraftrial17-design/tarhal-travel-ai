@@ -17,6 +17,9 @@ interface ClientDao {
     @Query("SELECT * FROM clients WHERE id = :id")
     suspend fun getClientById(id: Long): ClientEntity?
 
+    @Query("SELECT * FROM clients WHERE fullName LIKE '%' || :query || '%' OR phoneNumber LIKE '%' || :query || '%' OR whatsappNumber LIKE '%' || :query || '%' ORDER BY createdAt DESC")
+    fun searchClients(query: String): Flow<List<ClientEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertClient(client: ClientEntity): Long
 
