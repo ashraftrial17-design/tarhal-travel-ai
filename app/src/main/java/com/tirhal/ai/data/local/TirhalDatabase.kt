@@ -33,7 +33,7 @@ import com.tirhal.ai.data.local.entity.TripEntity
         TravelerRatingEntity::class,
         GuarantorEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class TirhalDatabase : RoomDatabase() {

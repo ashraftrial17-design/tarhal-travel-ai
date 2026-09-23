@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -75,15 +74,21 @@ fun SettingsScreen() {
                 try {
                     val rootJson = JSONObject()
 
-                    // Export Clients
+                    // Export Clients with all expanded fields
                     val clientsArray = JSONArray()
                     clientsList.forEach { client ->
                         val obj = JSONObject().apply {
                             put("id", client.id)
                             put("fullName", client.fullName)
                             put("phoneNumber", client.phoneNumber)
+                            put("whatsappNumber", client.whatsappNumber ?: "")
                             put("email", client.email ?: "")
                             put("address", client.address ?: "")
+                            put("preferredDestinations", client.preferredDestinations ?: "")
+                            put("lastTripDate", client.lastTripDate ?: "")
+                            put("expectedNextTravelDate", client.expectedNextTravelDate ?: "")
+                            put("travelCycleMonths", client.travelCycleMonths)
+                            put("satisfactionRating", client.satisfactionRating)
                             put("notes", client.notes ?: "")
                         }
                         clientsArray.put(obj)
@@ -204,7 +209,7 @@ fun SettingsScreen() {
                     }
 
                     Text(
-                        "يمكنك حفظ جميع بيانات العملاء، الرحلات، والحجوزات في ملف نسخي خارجي بصيغة JSON واستعادتها في أي وقت.",
+                        "يمكنك حفظ جميع بيانات العملاء والوجهات والرحلات والحجوزات في ملف نسخي خارجي بصيغة JSON واستعادتها في أي وقت.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -244,12 +249,13 @@ fun SettingsScreen() {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("معلومات التطبيق", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Text("معلومات التطبيق وقاعدة البيانات", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     }
 
                     Text("اسم التطبيق: ترحال AI (Tirhal AI)", style = MaterialTheme.typography.bodyMedium)
                     Text("الإصدار: 1.0.0", style = MaterialTheme.typography.bodyMedium)
-                    Text("حالة قاعدة البيانات: متصلة وجاهزة (${clientsList.size} عملاء / ${bookingsList.size} حجوزات)", style = MaterialTheme.typography.bodyMedium)
+                    Text("حالة قاعدة البيانات: متصلة (نسخة v2 مع هجرة سلسة بدون كسر البيانات)", style = MaterialTheme.typography.bodySmall)
+                    Text("إجمالي السجلات: ${clientsList.size} عملاء / ${bookingsList.size} حجوزات", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -259,27 +265,39 @@ fun SettingsScreen() {
         AlertDialog(
             onDismissRequest = { showRestoreConfirmDialog = false },
             title = { Text("تأكيد استعادة البيانات") },
-            text = { Text("هل تريد استعادة البيانات من الملف المحدد؟ سيتم إضافة السجلات غير الموجودة واستعادة العملاء والحجوزات.") },
+            text = { Text("هل تريد استعادة البيانات من الملف المحدد؟ سيتم إضافة وتأمين سجلات العملاء والحجوزات مع الاحتفاظ بالعلاقات بينها.") },
             confirmButton = {
                 Button(
                     onClick = {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 val root = JSONObject(pendingJsonData!!)
+                                val clientIdMap = mutableMapOf<Long, Long>()
+                                val tripIdMap = mutableMapOf<Long, Long>()
 
                                 if (root.has("clients")) {
                                     val clientsArr = root.getJSONArray("clients")
                                     for (i in 0 until clientsArr.length()) {
                                         val c = clientsArr.getJSONObject(i)
-                                        database.clientDao().insertClient(
+                                        val oldId = c.optLong("id", -1L)
+                                        val newId = database.clientDao().insertClient(
                                             ClientEntity(
                                                 fullName = c.getString("fullName"),
                                                 phoneNumber = c.getString("phoneNumber"),
+                                                whatsappNumber = c.optString("whatsappNumber").ifBlank { c.getString("phoneNumber") },
                                                 email = c.optString("email").ifBlank { null },
                                                 address = c.optString("address").ifBlank { null },
+                                                preferredDestinations = c.optString("preferredDestinations").ifBlank { null },
+                                                lastTripDate = c.optString("lastTripDate").ifBlank { null },
+                                                expectedNextTravelDate = c.optString("expectedNextTravelDate").ifBlank { null },
+                                                travelCycleMonths = c.optInt("travelCycleMonths", 6),
+                                                satisfactionRating = c.optInt("satisfactionRating", 5),
                                                 notes = c.optString("notes").ifBlank { null }
                                             )
                                         )
+                                        if (oldId != -1L) {
+                                            clientIdMap[oldId] = newId
+                                        }
                                     }
                                 }
 
@@ -287,7 +305,8 @@ fun SettingsScreen() {
                                     val tripsArr = root.getJSONArray("trips")
                                     for (i in 0 until tripsArr.length()) {
                                         val t = tripsArr.getJSONObject(i)
-                                        database.tripDao().insertTrip(
+                                        val oldId = t.optLong("id", -1L)
+                                        val newId = database.tripDao().insertTrip(
                                             TripEntity(
                                                 tripCode = t.getString("tripCode"),
                                                 origin = t.getString("origin"),
@@ -301,6 +320,9 @@ fun SettingsScreen() {
                                                 notes = t.optString("notes").ifBlank { null }
                                             )
                                         )
+                                        if (oldId != -1L) {
+                                            tripIdMap[oldId] = newId
+                                        }
                                     }
                                 }
 
@@ -308,11 +330,17 @@ fun SettingsScreen() {
                                     val bookingsArr = root.getJSONArray("bookings")
                                     for (i in 0 until bookingsArr.length()) {
                                         val b = bookingsArr.getJSONObject(i)
+                                        val rawClientId = b.getLong("clientId")
+                                        val rawTripId = b.getLong("tripId")
+
+                                        val targetClientId = clientIdMap[rawClientId] ?: rawClientId
+                                        val targetTripId = tripIdMap[rawTripId] ?: rawTripId
+
                                         database.bookingDao().insertBooking(
                                             BookingEntity(
                                                 bookingReference = b.getString("bookingReference"),
-                                                clientId = b.getLong("clientId"),
-                                                tripId = b.getLong("tripId"),
+                                                clientId = targetClientId,
+                                                tripId = targetTripId,
                                                 bookingDate = b.getString("bookingDate"),
                                                 status = b.getString("status"),
                                                 totalAmount = b.getDouble("totalAmount"),
@@ -327,7 +355,7 @@ fun SettingsScreen() {
                                 withContext(Dispatchers.Main) {
                                     showRestoreConfirmDialog = false
                                     pendingJsonData = null
-                                    Toast.makeText(context, "تمت استعادة البيانات بنجاح!", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(context, "تمت استعادة البيانات ونماذج العملاء بنجاح!", Toast.LENGTH_LONG).show()
                                 }
                             } catch (e: Exception) {
                                 withContext(Dispatchers.Main) {

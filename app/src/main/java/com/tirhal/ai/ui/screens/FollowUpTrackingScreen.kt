@@ -21,11 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Send
-import androidx.compose.material.icons.filled.Today
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -63,7 +61,7 @@ fun FollowUpTrackingScreen() {
     val ratingsList by database.travelerRatingDao().getAllRatings().collectAsState(initial = emptyList())
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("ماذا أفعل اليوم؟", "عملاء يتطلبون متابعة", "المتوقع عودتهم للسفر")
+    val tabs = listOf("ماذا أفعل اليوم؟", "متابعة المبالغ المتبقية", "متابعة ما بعد السفر", "المتوقع عودتهم للسفر")
 
     Column(
         modifier = Modifier
@@ -92,31 +90,10 @@ fun FollowUpTrackingScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         when (selectedTabIndex) {
-            0 -> {
-                // Today's Action Items
-                TodayActionsSection(
-                    clients = clientsList,
-                    followUps = followUpsList,
-                    context = context
-                )
-            }
-            1 -> {
-                // Clients requiring follow up (due payments, upcoming departure, or low rating)
-                ClientsRequiringFollowUpSection(
-                    clients = clientsList,
-                    bookings = bookingsList,
-                    ratings = ratingsList,
-                    context = context
-                )
-            }
-            2 -> {
-                // Return cycle travelers / inactive clients
-                ExpectedReturnSection(
-                    clients = clientsList,
-                    bookings = bookingsList,
-                    context = context
-                )
-            }
+            0 -> TodayActionsSection(clientsList, followUpsList, context)
+            1 -> PendingPaymentsSection(clientsList, bookingsList, context)
+            2 -> PostTripFollowUpSection(clientsList, bookingsList, ratingsList, context)
+            3 -> ExpectedReturnSection(clientsList, bookingsList, context)
         }
     }
 }
@@ -143,9 +120,9 @@ fun TodayActionsSection(
             items(followUps) { action ->
                 val client = clients.find { it.id == action.travelerId }
                 val clientName = client?.fullName ?: "عميل"
-                val phone = client?.phoneNumber ?: ""
+                val phone = client?.whatsappNumber ?: client?.phoneNumber ?: ""
 
-                val message = "مرحبًا ${clientName}، نود تذكيرك بخصوص: ${action.description} - مكتب ترحال AI للخدمات والسفريات."
+                val message = "مرحبًا أستاذ ${clientName}، نود تذكيرك بخصوص: ${action.description} - مكتب ترحال AI للخدمات والسفريات."
 
                 FollowUpCardItem(
                     title = "مهمة: ${action.actionType}",
@@ -161,49 +138,66 @@ fun TodayActionsSection(
 }
 
 @Composable
-fun ClientsRequiringFollowUpSection(
+fun PendingPaymentsSection(
     clients: List<ClientEntity>,
     bookings: List<com.tirhal.ai.data.local.entity.BookingEntity>,
-    ratings: List<com.tirhal.ai.data.local.entity.TravelerRatingEntity>,
     context: Context
 ) {
-    val pendingBookings = bookings.filter { it.paymentStatus != "مدفوع بالكامل" || it.status == "قيد الانتظار" }
-    val lowRatings = ratings.filter { it.ratingStars <= 3 }
+    val pendingBookings = bookings.filter { it.totalAmount > it.paidAmount }
 
-    if (pendingBookings.isEmpty() && lowRatings.isEmpty()) {
+    if (pendingBookings.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("جميع العملاء بحالة ممتازة ولا يحتاجون لمتابعة خاصة حالياً.")
+            Text("جميع المبالغ المحصلة مكتملة ولا يوجد مستحقات متبقية.")
         }
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(pendingBookings) { booking ->
                 val client = clients.find { it.id == booking.clientId }
                 val clientName = client?.fullName ?: "عميل"
-                val phone = client?.phoneNumber ?: ""
+                val phone = client?.whatsappNumber ?: client?.phoneNumber ?: ""
+                val remaining = booking.totalAmount - booking.paidAmount
 
-                val message = "مرحبًا ${clientName} العزيز، يُرجى العلم بأن لديك حجز برقم (${booking.bookingReference}) وحالة الدفع الحالية (${booking.paymentStatus}). يسعدنا استكمال الإجراءات معك - ترحال AI."
+                val message = "أهلاً أستاذ ${clientName} العزيز، نود تذكيرك بوجود مبلغ متبقٍ قدره ($remaining ريال) على الحجز رقم (${booking.bookingReference}). يسعدنا استكمال السداد عبر وسائل السداد المتاحة في ترحال AI."
 
                 FollowUpCardItem(
-                    title = "متابعة حجز: ${booking.bookingReference}",
-                    subtitle = "العميل: $clientName | حالة الدفع: ${booking.paymentStatus}",
-                    description = "المبلغ المتبقي للدفعة: ${booking.totalAmount - booking.paidAmount} ريال",
+                    title = "متابعة مبلغ متبقٍ (حجز: ${booking.bookingReference})",
+                    subtitle = "العميل: $clientName | المتبقي: $remaining ريال",
+                    description = "إجمالي الحجز: ${booking.totalAmount} ريال | المدفوع: ${booking.paidAmount} ريال",
                     message = message,
                     phoneNumber = phone,
                     context = context
                 )
             }
+        }
+    }
+}
 
-            items(lowRatings) { rating ->
-                val client = clients.find { it.id == rating.travelerId }
+@Composable
+fun PostTripFollowUpSection(
+    clients: List<ClientEntity>,
+    bookings: List<com.tirhal.ai.data.local.entity.BookingEntity>,
+    ratings: List<com.tirhal.ai.data.local.entity.TravelerRatingEntity>,
+    context: Context
+) {
+    val completedBookings = bookings.filter { it.status == "مكتمل" }
+
+    if (completedBookings.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("لا توجد رحلات مكتملة مؤخراً لمتابعة ما بعد السفر.")
+        }
+    } else {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            items(completedBookings) { booking ->
+                val client = clients.find { it.id == booking.clientId }
                 val clientName = client?.fullName ?: "عميل"
-                val phone = client?.phoneNumber ?: ""
+                val phone = client?.whatsappNumber ?: client?.phoneNumber ?: ""
 
-                val message = "أهلاً بك أستاذ ${clientName}، يهُمنا جداً رضاك عن خدمات ترحال AI. لاحظنا تقييمك للرحلة السابقة ونود الاستماع لملاحظاتك وتحسين تجربتك القادمة."
+                val message = "حمدًا لله على سلامتكم أستاذ ${clientName}! نتمنى أن تكون رحلتكم برقم (${booking.bookingReference}) كانت مريحة وممتعة. يهُمنا رأيكم وتقييمكم لخدمات ترحال AI."
 
                 FollowUpCardItem(
-                    title = "متابعة رضا عميل (تقييم ${rating.ratingStars}/5)",
-                    subtitle = "العميل: $clientName",
-                    description = "الملاحظة: ${rating.feedback ?: "لا توجد ملاحظات تفصيلية"}",
+                    title = "متابعة ما بعد السفر وتقييم التجربة",
+                    subtitle = "العميل: $clientName | تاريخ الحجز: ${booking.bookingDate}",
+                    description = "الاطمئنان على وصول العميل وسؤال عن انطباعه عن الخدمات والمقاعد.",
                     message = message,
                     phoneNumber = phone,
                     context = context
@@ -219,7 +213,6 @@ fun ExpectedReturnSection(
     bookings: List<com.tirhal.ai.data.local.entity.BookingEntity>,
     context: Context
 ) {
-    // Clients with older or completed bookings (e.g., inactive for over 3 months)
     val inactiveClients = clients.filter { client ->
         val clientBookings = bookings.filter { it.clientId == client.id }
         clientBookings.all { it.status == "مكتمل" } || clientBookings.isEmpty()
@@ -232,14 +225,15 @@ fun ExpectedReturnSection(
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(inactiveClients) { client ->
-                val message = "أهلاً أستاذ ${client.fullName}، اشتقنا لرحلاتك مع ترحال AI! لدينا عروض جديدة ومميزة متوفرة هذا الشهر للرحلات القادمة. هل تخطط لسفر قريب؟"
+                val phone = client.whatsappNumber ?: client.phoneNumber
+                val message = "أهلاً أستاذ ${client.fullName}، اشتقنا لرحلاتك مع ترحال AI! بناءً على جدول سفرك المعتاد كل (${client.travelCycleMonths} أشهر)، لدينا عروض طيران وحافلات جديدة ومميزة لمواسم السفر القادمة. هل تخطط لرحلة قريبة؟"
 
                 FollowUpCardItem(
-                    title = "عميل متوقع عودته للسفر",
-                    subtitle = "العميل: ${client.fullName} | ${client.phoneNumber}",
-                    description = "مرت فترة على آخر رحلة، فرصة ممتازة لعرض الرحلات والعروض الجديدة.",
+                    title = "عميل متوقع عودته للسفر (دورة السفر: ${client.travelCycleMonths} أشهر)",
+                    subtitle = "العميل: ${client.fullName} | هاتف: ${client.phoneNumber}",
+                    description = "الوجهات المفضلة للعميل: ${client.preferredDestinations ?: "غير محددة"}",
                     message = message,
-                    phoneNumber = client.phoneNumber,
+                    phoneNumber = phone,
                     context = context
                 )
             }
@@ -271,7 +265,6 @@ fun FollowUpCardItem(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Box showing pre-generated Arabic message
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -292,7 +285,6 @@ fun FollowUpCardItem(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Copy Message Button
                 OutlinedButton(
                     onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -307,7 +299,6 @@ fun FollowUpCardItem(
                     Text("نسخ الرسالة")
                 }
 
-                // Open WhatsApp Button
                 Button(
                     onClick = {
                         val cleanPhone = phoneNumber.replace("+", "").replace(" ", "")
@@ -322,7 +313,7 @@ fun FollowUpCardItem(
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366))
                 ) {
-                    Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.height(16.dp), tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.height(16.dp), tint = Color.White)
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("WhatsApp", color = Color.White)
                 }

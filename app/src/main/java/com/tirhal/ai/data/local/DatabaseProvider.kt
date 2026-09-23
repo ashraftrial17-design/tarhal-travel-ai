@@ -3,6 +3,7 @@ package com.tirhal.ai.data.local
 import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tirhal.ai.data.local.entity.BookingEntity
 import com.tirhal.ai.data.local.entity.ClientEntity
@@ -17,6 +18,17 @@ object DatabaseProvider {
     @Volatile
     private var INSTANCE: TirhalDatabase? = null
 
+    val MIGRATION_1_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE clients ADD COLUMN whatsappNumber TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE clients ADD COLUMN preferredDestinations TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE clients ADD COLUMN lastTripDate TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE clients ADD COLUMN expectedNextTravelDate TEXT DEFAULT NULL")
+            db.execSQL("ALTER TABLE clients ADD COLUMN travelCycleMonths INTEGER NOT NULL DEFAULT 6")
+            db.execSQL("ALTER TABLE clients ADD COLUMN satisfactionRating INTEGER NOT NULL DEFAULT 5")
+        }
+    }
+
     fun getDatabase(context: Context): TirhalDatabase {
         return INSTANCE ?: synchronized(this) {
             val instance = Room.databaseBuilder(
@@ -24,6 +36,7 @@ object DatabaseProvider {
                 TirhalDatabase::class.java,
                 "tirhal_database"
             )
+                .addMigrations(MIGRATION_1_2)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -51,17 +64,29 @@ object DatabaseProvider {
             ClientEntity(
                 fullName = "أحمد محمد العلي",
                 phoneNumber = "+966501234567",
+                whatsappNumber = "+966501234567",
                 email = "ahmed.ali@example.com",
                 address = "الرياض - حي الملز",
-                notes = "عميل مميز يسافر بشكل شهري"
+                preferredDestinations = "جدة، دبي",
+                lastTripDate = "2025-01-10",
+                expectedNextTravelDate = "2025-04-10",
+                travelCycleMonths = 3,
+                satisfactionRating = 5,
+                notes = "عميل مميز يسافر بشكل دوري"
             )
         )
         val clientId2 = clientDao.insertClient(
             ClientEntity(
                 fullName = "فاطمة إبراهيم الشمري",
                 phoneNumber = "+966559876543",
+                whatsappNumber = "+966559876543",
                 email = "fatimah.s@example.com",
                 address = "جدة - حي الشاطئ",
+                preferredDestinations = "مكة المكرمة",
+                lastTripDate = "2024-11-20",
+                expectedNextTravelDate = "2025-05-20",
+                travelCycleMonths = 6,
+                satisfactionRating = 4,
                 notes = "تفضل الرحلات العائلية وتذاكر الطيران"
             )
         )
@@ -69,9 +94,15 @@ object DatabaseProvider {
             ClientEntity(
                 fullName = "خالد بن عبدالله السعدي",
                 phoneNumber = "+966531122334",
+                whatsappNumber = "+966531122334",
                 email = "khaled.s@example.com",
                 address = "الدمام - حي الخزامى",
-                notes = "عميل منقطع، آخر رحلة منذ أكثر من 6 أشهر"
+                preferredDestinations = "دبي",
+                lastTripDate = "2024-09-10",
+                expectedNextTravelDate = "2025-03-10",
+                travelCycleMonths = 6,
+                satisfactionRating = 2,
+                notes = "عميل منقطع، واجه ملاحظة في رحلته السابقة"
             )
         )
 
@@ -146,7 +177,7 @@ object DatabaseProvider {
                 notes = "يرجى تأكيد الدفع المتبقي قبل السفر"
             )
         )
-        val bookingId3 = bookingDao.insertBooking(
+        bookingDao.insertBooking(
             BookingEntity(
                 bookingReference = "BKG-2024-088",
                 clientId = clientId3,

@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,27 +14,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.tirhal.ai.R
+import com.tirhal.ai.data.local.DatabaseProvider
 import com.tirhal.ai.ui.components.LogoPlaceholder
 import com.tirhal.ai.ui.navigation.Screen
 
@@ -43,6 +47,13 @@ import com.tirhal.ai.ui.navigation.Screen
 fun HomeScreen(
     onNavigateTo: (Screen) -> Unit
 ) {
+    val context = LocalContext.current
+    val database = remember { DatabaseProvider.getDatabase(context) }
+
+    val clientsList by database.clientDao().getAllClients().collectAsState(initial = emptyList())
+    val bookingsList by database.bookingDao().getAllBookings().collectAsState(initial = emptyList())
+    val followUpsList by database.followUpActionDao().getAllFollowUpActions().collectAsState(initial = emptyList())
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -57,7 +68,7 @@ fun HomeScreen(
         item {
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
                 shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -68,16 +79,49 @@ fun HomeScreen(
                     Text(
                         text = stringResource(id = R.string.home_welcome),
                         style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(id = R.string.home_desc),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
                     )
                 }
+            }
+        }
+
+        // Live Operational Counters Bar
+        item {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                HomeStatCard(
+                    title = "العملاء",
+                    value = "${clientsList.size}",
+                    icon = Icons.Default.People,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onNavigateTo(Screen.ClientsTravelers) }
+                )
+                HomeStatCard(
+                    title = "الحجوزات",
+                    value = "${bookingsList.size}",
+                    icon = Screen.TripsBookings.icon,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onNavigateTo(Screen.TripsBookings) }
+                )
+                HomeStatCard(
+                    title = "المتابعات",
+                    value = "${followUpsList.filter { it.status == "معلقة" }.size}",
+                    icon = Icons.Default.NotificationsActive,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onNavigateTo(Screen.TravelerTracking) }
+                )
             }
         }
 
@@ -123,8 +167,8 @@ fun HomeScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .size(44.dp)
+                                    .clip(RoundedCornerShape(10.dp))
                                     .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -135,16 +179,61 @@ fun HomeScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = stringResource(id = screen.titleResId),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.weight(1f)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(id = screen.titleResId),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.outline
                             )
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun HomeStatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
