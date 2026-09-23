@@ -29,6 +29,13 @@ object DatabaseProvider {
         }
     }
 
+    val MIGRATION_2_3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE clients ADD COLUMN clientType TEXT NOT NULL DEFAULT 'فرد'")
+            db.execSQL("ALTER TABLE clients ADD COLUMN status TEXT NOT NULL DEFAULT 'نشط'")
+        }
+    }
+
     fun getDatabase(context: Context): TirhalDatabase {
         return INSTANCE ?: synchronized(this) {
             val instance = Room.databaseBuilder(
@@ -36,7 +43,7 @@ object DatabaseProvider {
                 TirhalDatabase::class.java,
                 "tirhal_database"
             )
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .addCallback(object : RoomDatabase.Callback() {
                     override fun onCreate(db: SupportSQLiteDatabase) {
                         super.onCreate(db)
@@ -67,11 +74,13 @@ object DatabaseProvider {
                 whatsappNumber = "+966501234567",
                 email = "ahmed.ali@example.com",
                 address = "الرياض - حي الملز",
+                clientType = "فرد",
                 preferredDestinations = "جدة، دبي",
                 lastTripDate = "2025-01-10",
                 expectedNextTravelDate = "2025-04-10",
                 travelCycleMonths = 3,
                 satisfactionRating = 5,
+                status = "نشط",
                 notes = "عميل مميز يسافر بشكل دوري"
             )
         )
@@ -82,27 +91,48 @@ object DatabaseProvider {
                 whatsappNumber = "+966559876543",
                 email = "fatimah.s@example.com",
                 address = "جدة - حي الشاطئ",
+                clientType = "عائلة",
                 preferredDestinations = "مكة المكرمة",
                 lastTripDate = "2024-11-20",
                 expectedNextTravelDate = "2025-05-20",
                 travelCycleMonths = 6,
                 satisfactionRating = 4,
+                status = "يحتاج متابعة",
                 notes = "تفضل الرحلات العائلية وتذاكر الطيران"
             )
         )
         val clientId3 = clientDao.insertClient(
             ClientEntity(
-                fullName = "خالد بن عبدالله السعدي",
+                fullName = "شركة الفرسان للسياحة والتنظيم",
                 phoneNumber = "+966531122334",
                 whatsappNumber = "+966531122334",
-                email = "khaled.s@example.com",
+                email = "info@alforsan.example.com",
                 address = "الدمام - حي الخزامى",
-                preferredDestinations = "دبي",
+                clientType = "شركة",
+                preferredDestinations = "دبي، القاهرة",
                 lastTripDate = "2024-09-10",
                 expectedNextTravelDate = "2025-03-10",
                 travelCycleMonths = 6,
                 satisfactionRating = 2,
+                status = "منقطع",
                 notes = "عميل منقطع، واجه ملاحظة في رحلته السابقة"
+            )
+        )
+        val clientId4 = clientDao.insertClient(
+            ClientEntity(
+                fullName = "مؤسسة الأفق للسفر",
+                phoneNumber = "+966540099887",
+                whatsappNumber = "+966540099887",
+                email = "contact@alofoq.example.com",
+                address = "الرياض - العليا",
+                clientType = "مؤسسة",
+                preferredDestinations = "إسطنبول",
+                lastTripDate = "2025-02-01",
+                expectedNextTravelDate = "2025-03-25",
+                travelCycleMonths = 2,
+                satisfactionRating = 5,
+                status = "محتمل",
+                notes = "مجموعة حجز موسمية"
             )
         )
 
