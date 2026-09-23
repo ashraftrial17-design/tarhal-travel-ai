@@ -12,11 +12,13 @@ data class ClientEntity(
     val whatsappNumber: String? = null,
     val email: String? = null,
     val address: String? = null,
+    val clientType: String = "فرد", // فرد، عائلة، شركة، مؤسسة، مجموعة
     val preferredDestinations: String? = null,
     val lastTripDate: String? = null,
     val expectedNextTravelDate: String? = null,
     val travelCycleMonths: Int = 6,
     val satisfactionRating: Int = 5, // 1 to 5
+    val status: String = "نشط", // نشط، محتمل، منقطع، يحتاج متابعة
     val notes: String? = null,
     val createdAt: Long = System.currentTimeMillis()
 )
