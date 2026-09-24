@@ -52,8 +52,6 @@ import com.tirhal.ai.data.local.DatabaseProvider
 @Composable
 fun DigitalMarketingScreen() {
     val context = LocalContext.current
-    val database = remember { DatabaseProvider.getDatabase(context) }
-    val tripsList by database.tripDao().getAllTrips().collectAsState(initial = emptyList())
 
     var destinationName by remember { mutableStateOf("دبي ومكة المكرمة") }
     var offerDiscount by remember { mutableStateOf("15%") }
