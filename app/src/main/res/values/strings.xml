@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">ترحال AI</string>
-    <string name="logo_placeholder">شعار ترحال AI (مكان مخصص للشعار)</string>
+    <string name="logo_placeholder">مكتب سفريات وخدمات سفر متكامل</string>
     <string name="logo_subtitle">مكتب سفريات وخدمات سفر متكامل</string>
 
     <!-- Navigation Section Titles -->
