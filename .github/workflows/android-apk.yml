@@ -44,11 +44,19 @@ jobs:
             echo "::error::Debug APK not found at $DEBUG_APK"
             exit 1
           fi
-          echo "=== APK File Metrics ==="
-          ls -lh "$DEBUG_APK"
-          sha256sum "$DEBUG_APK"
 
-          echo "=== Locating Android Build-Tools ==="
+          echo "=== 1. ZIP Archive & DEX Structure Integrity Check ==="
+          unzip -t "$DEBUG_APK" || {
+            echo "::error::APK Zip archive integrity check failed!"
+            exit 1
+          }
+
+          echo "=== 2. File Metrics & SHA-256 Checksum ==="
+          ls -lh "$DEBUG_APK"
+          BUILD_SHA=$(sha256sum "$DEBUG_APK" | awk '{print $1}')
+          echo "BUILT_APK_SHA256=$BUILD_SHA"
+
+          echo "=== 3. Locating Android Build-Tools ==="
           AAPT=$(find $ANDROID_HOME/build-tools -name aapt | sort -V | tail -n 1)
           APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
           ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | sort -V | tail -n 1)
@@ -58,20 +66,41 @@ jobs:
             exit 1
           fi
 
-          echo "=== AAPT Badging Inspection ==="
-          $AAPT dump badging "$DEBUG_APK"
+          echo "=== 4. AAPT Badging & Manifest Verification ==="
+          BADGING=$($AAPT dump badging "$DEBUG_APK")
+          echo "$BADGING"
+          echo "$BADGING" | grep -q "package: name='com.tirhal.ai'" || {
+            echo "::error::Package name mismatch in APK manifest!"
+            exit 1
+          }
+          echo "$BADGING" | grep -q "launchable-activity: name='com.tirhal.ai.MainActivity'" || {
+            echo "::error::Launcher activity com.tirhal.ai.MainActivity not found in APK manifest!"
+            exit 1
+          }
 
-          echo "=== Zip Alignment Check ==="
+          echo "=== 5. Zip Alignment Check ==="
           $ZIPALIGN -c -v 4 "$DEBUG_APK" || {
             echo "::error::Zip alignment check failed!"
             exit 1
           }
 
-          echo "=== APKSIGNER Signature Verification ==="
+          echo "=== 6. APKSIGNER Signature Scheme Verification ==="
           $APKSIGNER verify --verbose --print-certs "$DEBUG_APK" || {
             echo "::error::APK signature verification failed!"
             exit 1
           }
+
+          echo "=== 7. Staging Copy & Artifact Matching Verification ==="
+          mkdir -p staging
+          cp "$DEBUG_APK" staging/app-debug.apk
+          STAGED_SHA=$(sha256sum staging/app-debug.apk | awk '{print $1}')
+          echo "STAGED_APK_SHA256=$STAGED_SHA"
+
+          if [ "$BUILD_SHA" != "$STAGED_SHA" ]; then
+            echo "::error::Artifact SHA-256 mismatch! Built: $BUILD_SHA vs Staged: $STAGED_SHA"
+            exit 1
+          fi
+          echo "Artifact SHA-256 matching confirmed successfully: $BUILD_SHA"
 
       - name: Upload Installable Debug APK Artifact
         uses: actions/upload-artifact@v4
