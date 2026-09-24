@@ -2,17 +2,8 @@ package com.tirhal.ai.data.local
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.tirhal.ai.data.local.entity.BookingEntity
-import com.tirhal.ai.data.local.entity.ClientEntity
-import com.tirhal.ai.data.local.entity.FollowUpActionEntity
-import com.tirhal.ai.data.local.entity.TravelerRatingEntity
-import com.tirhal.ai.data.local.entity.TripEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 object DatabaseProvider {
     @Volatile

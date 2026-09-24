@@ -53,16 +53,20 @@ import com.tirhal.ai.data.local.DatabaseProvider
 fun DigitalMarketingScreen() {
     val context = LocalContext.current
 
-    var destinationName by remember { mutableStateOf("دبي ومكة المكرمة") }
-    var offerDiscount by remember { mutableStateOf("15%") }
-    var customNotes by remember { mutableStateOf("شاملة الإقامة والتذاكر الذكية") }
+    var destinationName by remember { mutableStateOf("") }
+    var offerDiscount by remember { mutableStateOf("") }
+    var customNotes by remember { mutableStateOf("") }
+
+    val displayDestination = destinationName.ifBlank { "الوجهة المحددة" }
+    val displayDiscount = offerDiscount.ifBlank { "عرض خاص" }
+    val displayNotes = customNotes.ifBlank { "خدمات سفر متكاملة" }
 
     val generatedCampaignMessage = """
         ✨ عروض حصرية وخاصة من مكتب ترحال AI للسفريات! ✈️🚌
 
-        🚀 احجز رحلتك القادمة إلى: $destinationName
-        🎁 استمتع بخصم خاص يصل إلى: $offerDiscount
-        📌 ميزات إضافية: $customNotes
+        🚀 احجز رحلتك القادمة إلى: $displayDestination
+        🎁 استمتع بخصم خاص يصل إلى: $displayDiscount
+        📌 ميزات إضافية: $displayNotes
 
         سارع بالحجز الآن واستفد من أفضل أسعار الموسم مع ترحال AI!
         للتواصل والحجز السريع عبر الواتساب:
@@ -104,6 +108,7 @@ fun DigitalMarketingScreen() {
                         value = destinationName,
                         onValueChange = { destinationName = it },
                         label = { Text("الوجهة أو الرحلة") },
+                        placeholder = { Text("مثال: دبي، مكة المكرمة") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -112,6 +117,7 @@ fun DigitalMarketingScreen() {
                         value = offerDiscount,
                         onValueChange = { offerDiscount = it },
                         label = { Text("نسبة الخصم أو العرض") },
+                        placeholder = { Text("مثال: 15%") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
@@ -120,6 +126,7 @@ fun DigitalMarketingScreen() {
                         value = customNotes,
                         onValueChange = { customNotes = it },
                         label = { Text("ملاحظات / تفاصيل الإقامة والنقل") },
+                        placeholder = { Text("مثال: شاملة الإقامة وتذاكر الطيران") },
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 2
                     )
