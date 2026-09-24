@@ -301,8 +301,12 @@ fun FollowUpCardItem(
 
                 Button(
                     onClick = {
-                        val cleanPhone = phoneNumber.replace("+", "").replace(" ", "")
-                        val uri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(message)}")
+                        val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
+                        val uri = if (cleanPhone.isNotBlank()) {
+                            Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(message)}")
+                        } else {
+                            Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(message)}")
+                        }
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         try {
                             context.startActivity(intent)

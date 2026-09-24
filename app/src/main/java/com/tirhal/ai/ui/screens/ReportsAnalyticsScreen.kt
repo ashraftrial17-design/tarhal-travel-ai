@@ -543,26 +543,28 @@ fun FollowUpOpportunitiesTab(
     bookingsList: List<BookingEntity>,
     context: Context
 ) {
-    val opportunities = mutableListOf<Pair<String, String>>()
+    val opportunities = mutableListOf<Triple<String, String, String>>()
 
     clientsList.forEach { client ->
+        val phone = client.whatsappNumber ?: client.phoneNumber
         if (!client.expectedNextTravelDate.isNullOrBlank()) {
-            opportunities.add(Pair("موعد سفر متوقع قريب للعميل ${client.fullName}", "أهلاً أستاذ ${client.fullName}، نود تذكيرك بموعد سفرك المتوقع بتاريخ (${client.expectedNextTravelDate}). يسعدنا الحجز لك مسبقاً مع ترحال AI."))
+            opportunities.add(Triple("موعد سفر متوقع قريب للعميل ${client.fullName}", "أهلاً أستاذ ${client.fullName}، نود تذكيرك بموعد سفرك المتوقع بتاريخ (${client.expectedNextTravelDate}). يسعدنا الحجز لك مسبقاً مع ترحال AI.", phone))
         }
         if (client.satisfactionRating <= 2) {
-            opportunities.add(Pair("عميل بحديث رضا منخفض (${client.fullName})", "أهلاً بك أستاذ ${client.fullName}، يسعدنا الاستماع لملاحظاتك وتحسين تجربتك القادمة مع ترحال AI."))
+            opportunities.add(Triple("عميل بحديث رضا منخفض (${client.fullName})", "أهلاً بك أستاذ ${client.fullName}، يسعدنا الاستماع لملاحظاتك وتحسين تجربتك القادمة مع ترحال AI.", phone))
         }
     }
 
     bookingsList.filter { it.totalAmount > it.paidAmount }.forEach { b ->
         val client = clientsList.find { c -> c.id == b.clientId }
         val cName = client?.fullName ?: "العميل"
+        val phone = client?.whatsappNumber ?: client?.phoneNumber ?: ""
         val remaining = b.totalAmount - b.paidAmount
-        opportunities.add(Pair("مبلغ متبقٍ على حجز (${b.bookingReference}) - $cName", "أهلاً أستاذ $cName، يرجى التكرم باستكمال المبلغ المتبقي قدره ($remaining ريال) للحجز رقم (${b.bookingReference})."))
+        opportunities.add(Triple("مبلغ متبقٍ على حجز (${b.bookingReference}) - $cName", "أهلاً أستاذ $cName، يرجى التكرم باستكمال المبلغ المتبقي قدره ($remaining ريال) للحجز رقم (${b.bookingReference}).", phone))
     }
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(opportunities) { (title, msg) ->
+        items(opportunities) { (title, msg, phone) ->
             Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -593,9 +595,18 @@ fun FollowUpOpportunitiesTab(
                         }
                         Button(
                             onClick = {
-                                val uri = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(msg)}")
+                                val cleanPhone = phone.replace(Regex("[^0-9]"), "")
+                                val uri = if (cleanPhone.isNotBlank()) {
+                                    Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(msg)}")
+                                } else {
+                                    Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(msg)}")
+                                }
                                 val intent = Intent(Intent.ACTION_VIEW, uri)
-                                context.startActivity(intent)
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "تعذر فتح WhatsApp", Toast.LENGTH_SHORT).show()
+                                }
                             },
                             modifier = Modifier.weight(1f),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366))
