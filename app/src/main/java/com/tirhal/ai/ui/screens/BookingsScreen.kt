@@ -159,14 +159,20 @@ fun BookingsScreen() {
             clients = clientsList,
             trips = tripsList,
             onDismiss = { showAddEditDialog = false },
-            onSave = { bookingRef, clientId, tripId, bookingDate, status, totalAmount, paidAmount, paymentStatus, notes ->
+            onSave = { bookingRef, clientId, rawTripId, newTrip, bookingDate, status, totalAmount, paidAmount, paymentStatus, notes ->
                 scope.launch(Dispatchers.IO) {
+                    val targetTripId = if (newTrip != null) {
+                        database.tripDao().insertTrip(newTrip)
+                    } else {
+                        rawTripId
+                    }
+
                     if (bookingToEdit == null) {
                         database.bookingDao().insertBooking(
                             BookingEntity(
                                 bookingReference = bookingRef,
                                 clientId = clientId,
-                                tripId = tripId,
+                                tripId = targetTripId,
                                 bookingDate = bookingDate,
                                 status = status,
                                 totalAmount = totalAmount,
@@ -180,7 +186,7 @@ fun BookingsScreen() {
                             bookingToEdit!!.copy(
                                 bookingReference = bookingRef,
                                 clientId = clientId,
-                                tripId = tripId,
+                                tripId = targetTripId,
                                 bookingDate = bookingDate,
                                 status = status,
                                 totalAmount = totalAmount,
@@ -351,6 +357,7 @@ fun BookingAddEditDialog(
         bookingRef: String,
         clientId: Long,
         tripId: Long,
+        newTrip: TripEntity?,
         bookingDate: String,
         status: String,
         totalAmount: Double,
@@ -362,6 +369,13 @@ fun BookingAddEditDialog(
     var bookingRef by remember { mutableStateOf(booking?.bookingReference ?: "BKG-${System.currentTimeMillis().toString().takeLast(5)}") }
     var selectedClientId by remember { mutableStateOf(booking?.clientId ?: clients.firstOrNull()?.id ?: 0L) }
     var selectedTripId by remember { mutableStateOf(booking?.tripId ?: trips.firstOrNull()?.id ?: 0L) }
+    var isNewTripMode by remember { mutableStateOf(trips.isEmpty()) }
+
+    var tripCode by remember { mutableStateOf("TRP-${System.currentTimeMillis().toString().takeLast(4)}") }
+    var tripOrigin by remember { mutableStateOf("الرياض") }
+    var tripDestination by remember { mutableStateOf("جدة") }
+    var tripTransport by remember { mutableStateOf("طيران") }
+
     var bookingDate by remember { mutableStateOf(booking?.bookingDate ?: "2025-03-05") }
     var status by remember { mutableStateOf(booking?.status ?: "مؤكد") }
     var totalAmountText by remember { mutableStateOf(booking?.totalAmount?.toString() ?: "450.0") }
@@ -380,149 +394,219 @@ fun BookingAddEditDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (booking == null) "إضافة حجز جديد" else "تعديل الحجز") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = bookingRef,
-                    onValueChange = { bookingRef = it },
-                    label = { Text("رقم مرجع الحجز *") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Select Client Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = clientDropdownExpanded,
-                    onExpandedChange = { clientDropdownExpanded = !clientDropdownExpanded }
-                ) {
-                    val clientName = clients.find { it.id == selectedClientId }?.fullName ?: "اختر العميل"
+            LazyColumn(modifier = Modifier.height(380.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                item {
                     OutlinedTextField(
-                        value = clientName,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("العميل *") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientDropdownExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+                        value = bookingRef,
+                        onValueChange = { bookingRef = it },
+                        label = { Text("رقم مرجع الحجز *") },
+                        singleLine = true,
+                        isError = showError && bookingRef.isBlank(),
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    ExposedDropdownMenu(
-                        expanded = clientDropdownExpanded,
-                        onDismissRequest = { clientDropdownExpanded = false }
-                    ) {
-                        clients.forEach { client ->
-                            DropdownMenuItem(
-                                text = { Text(client.fullName) },
-                                onClick = {
-                                    selectedClientId = client.id
-                                    clientDropdownExpanded = false
-                                }
+                }
+
+                item {
+                    if (clients.isEmpty()) {
+                        Text(
+                            text = "⚠️ لا يوجد عملاء مسجلون. يرجى إضافة عميل من شاشة العملاء أولاً.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    } else {
+                        ExposedDropdownMenuBox(
+                            expanded = clientDropdownExpanded,
+                            onExpandedChange = { clientDropdownExpanded = !clientDropdownExpanded }
+                        ) {
+                            val clientName = clients.find { it.id == selectedClientId }?.fullName ?: "اختر العميل *"
+                            OutlinedTextField(
+                                value = clientName,
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("العميل *") },
+                                isError = showError && selectedClientId == 0L,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = clientDropdownExpanded) },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth()
                             )
+                            ExposedDropdownMenu(
+                                expanded = clientDropdownExpanded,
+                                onDismissRequest = { clientDropdownExpanded = false }
+                            ) {
+                                clients.forEach { client ->
+                                    DropdownMenuItem(
+                                        text = { Text(client.fullName) },
+                                        onClick = {
+                                            selectedClientId = client.id
+                                            clientDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
 
-                // Select Trip Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = tripDropdownExpanded,
-                    onExpandedChange = { tripDropdownExpanded = !tripDropdownExpanded }
-                ) {
-                    val tripText = trips.find { it.id == selectedTripId }?.let { "${it.tripCode} (${it.origin} ➔ ${it.destination})" } ?: "اختر الرحلة"
-                    OutlinedTextField(
-                        value = tripText,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("الرحلة *") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = tripDropdownExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = tripDropdownExpanded,
-                        onDismissRequest = { tripDropdownExpanded = false }
-                    ) {
-                        trips.forEach { trip ->
-                            DropdownMenuItem(
-                                text = { Text("${trip.tripCode} (${trip.origin} ➔ ${trip.destination})") },
-                                onClick = {
-                                    selectedTripId = trip.id
-                                    totalAmountText = trip.price.toString()
-                                    tripDropdownExpanded = false
+                item {
+                    if (!isNewTripMode && trips.isNotEmpty()) {
+                        Column {
+                            ExposedDropdownMenuBox(
+                                expanded = tripDropdownExpanded,
+                                onExpandedChange = { tripDropdownExpanded = !tripDropdownExpanded }
+                            ) {
+                                val tripText = trips.find { it.id == selectedTripId }?.let { "${it.tripCode} (${it.origin} ➔ ${it.destination})" } ?: "اختر الرحلة *"
+                                OutlinedTextField(
+                                    value = tripText,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text("الرحلة *") },
+                                    isError = showError && selectedTripId == 0L,
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = tripDropdownExpanded) },
+                                    modifier = Modifier
+                                        .menuAnchor()
+                                        .fillMaxWidth()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = tripDropdownExpanded,
+                                    onDismissRequest = { tripDropdownExpanded = false }
+                                ) {
+                                    trips.forEach { trip ->
+                                        DropdownMenuItem(
+                                            text = { Text("${trip.tripCode} (${trip.origin} ➔ ${trip.destination})") },
+                                            onClick = {
+                                                selectedTripId = trip.id
+                                                totalAmountText = trip.price.toString()
+                                                tripDropdownExpanded = false
+                                            }
+                                        )
+                                    }
                                 }
-                            )
+                            }
+                            TextButton(onClick = { isNewTripMode = true }) {
+                                Text("➕ إضافة بيانات رحلة جديدة بدلاً من الرحلات المسجلة")
+                            }
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("بيانات الرحلة الجديدة:", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = tripOrigin,
+                                    onValueChange = { tripOrigin = it },
+                                    label = { Text("نقطة الانطلاق *") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = tripDestination,
+                                    onValueChange = { tripDestination = it },
+                                    label = { Text("الوجهة *") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = tripCode,
+                                    onValueChange = { tripCode = it },
+                                    label = { Text("كود الرحلة") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                OutlinedTextField(
+                                    value = tripTransport,
+                                    onValueChange = { tripTransport = it },
+                                    label = { Text("وسيلة النقل") },
+                                    singleLine = true,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            if (trips.isNotEmpty()) {
+                                TextButton(onClick = { isNewTripMode = false }) {
+                                    Text("↩️ اختيار من القائمة المسجلة")
+                                }
+                            }
                         }
                     }
                 }
 
-                OutlinedTextField(
-                    value = bookingDate,
-                    onValueChange = { bookingDate = it },
-                    label = { Text("تاريخ الحجز (YYYY-MM-DD)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                // Select Booking Status Dropdown
-                ExposedDropdownMenuBox(
-                    expanded = statusDropdownExpanded,
-                    onExpandedChange = { statusDropdownExpanded = !statusDropdownExpanded }
-                ) {
+                item {
                     OutlinedTextField(
-                        value = status,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("حالة الحجز") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded) },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
+                        value = bookingDate,
+                        onValueChange = { bookingDate = it },
+                        label = { Text("تاريخ الحجز (YYYY-MM-DD)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                    ExposedDropdownMenu(
+                }
+
+                item {
+                    ExposedDropdownMenuBox(
                         expanded = statusDropdownExpanded,
-                        onDismissRequest = { statusDropdownExpanded = false }
+                        onExpandedChange = { statusDropdownExpanded = !statusDropdownExpanded }
                     ) {
-                        statusOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    status = option
-                                    statusDropdownExpanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = status,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("حالة الحجز") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = statusDropdownExpanded,
+                            onDismissRequest = { statusDropdownExpanded = false }
+                        ) {
+                            statusOptions.forEach { option ->
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        status = option
+                                        statusDropdownExpanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = totalAmountText,
-                        onValueChange = { totalAmountText = it },
-                        label = { Text("الإجمالي (ريال)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = paidAmountText,
-                        onValueChange = { paidAmountText = it },
-                        label = { Text("المدفوع (ريال)") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
-                    )
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = totalAmountText,
+                            onValueChange = { totalAmountText = it },
+                            label = { Text("الإجمالي (ريال)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = paidAmountText,
+                            onValueChange = { paidAmountText = it },
+                            label = { Text("المدفوع (ريال)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
-                OutlinedTextField(
-                    value = notes,
-                    onValueChange = { notes = it },
-                    label = { Text("ملاحظات الحجز") },
-                    maxLines = 2,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                item {
+                    OutlinedTextField(
+                        value = notes,
+                        onValueChange = { notes = it },
+                        label = { Text("ملاحظات الحجز") },
+                        maxLines = 2,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    if (bookingRef.isBlank() || selectedClientId == 0L || selectedTripId == 0L) {
+                    if (bookingRef.isBlank() || selectedClientId == 0L || (!isNewTripMode && selectedTripId == 0L)) {
                         showError = true
                     } else {
                         val total = totalAmountText.toDoubleOrNull() ?: 0.0
@@ -532,7 +616,20 @@ fun BookingAddEditDialog(
                             paid > 0 -> "مدفوع جزئيًا"
                             else -> "غير مدفوع"
                         }
-                        onSave(bookingRef, selectedClientId, selectedTripId, bookingDate, status, total, paid, computedPaymentStatus, notes)
+
+                        val newTripEntity = if (isNewTripMode) {
+                            TripEntity(
+                                tripCode = tripCode.ifBlank { "TRP-NEW" },
+                                origin = tripOrigin.ifBlank { "الرياض" },
+                                destination = tripDestination.ifBlank { "جدة" },
+                                departureDate = bookingDate,
+                                transportationType = tripTransport.ifBlank { "طيران" },
+                                price = total,
+                                status = "مجدولة"
+                            )
+                        } else null
+
+                        onSave(bookingRef, selectedClientId, selectedTripId, newTripEntity, bookingDate, status, total, paid, computedPaymentStatus, notes)
                     }
                 }
             ) {
