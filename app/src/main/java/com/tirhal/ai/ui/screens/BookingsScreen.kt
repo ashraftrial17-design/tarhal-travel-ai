@@ -366,11 +366,13 @@ fun BookingAddEditDialog(
     var status by remember { mutableStateOf(booking?.status ?: "مؤكد") }
     var totalAmountText by remember { mutableStateOf(booking?.totalAmount?.toString() ?: "450.0") }
     var paidAmountText by remember { mutableStateOf(booking?.paidAmount?.toString() ?: "450.0") }
-    var paymentStatus by remember { mutableStateOf(booking?.paymentStatus ?: "مدفوع بالكامل") }
     var notes by remember { mutableStateOf(booking?.notes ?: "") }
 
     var clientDropdownExpanded by remember { mutableStateOf(false) }
     var tripDropdownExpanded by remember { mutableStateOf(false) }
+    var statusDropdownExpanded by remember { mutableStateOf(false) }
+
+    val statusOptions = listOf("مؤكد", "قيد الانتظار", "مكتمل", "ملغى")
 
     var showError by remember { mutableStateOf(false) }
 
@@ -383,7 +385,8 @@ fun BookingAddEditDialog(
                     value = bookingRef,
                     onValueChange = { bookingRef = it },
                     label = { Text("رقم مرجع الحجز *") },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 // Select Client Dropdown
@@ -455,8 +458,40 @@ fun BookingAddEditDialog(
                     value = bookingDate,
                     onValueChange = { bookingDate = it },
                     label = { Text("تاريخ الحجز (YYYY-MM-DD)") },
-                    singleLine = true
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
                 )
+
+                // Select Booking Status Dropdown
+                ExposedDropdownMenuBox(
+                    expanded = statusDropdownExpanded,
+                    onExpandedChange = { statusDropdownExpanded = !statusDropdownExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = status,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("حالة الحجز") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = statusDropdownExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = statusDropdownExpanded,
+                        onDismissRequest = { statusDropdownExpanded = false }
+                    ) {
+                        statusOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    status = option
+                                    statusDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -479,7 +514,8 @@ fun BookingAddEditDialog(
                     value = notes,
                     onValueChange = { notes = it },
                     label = { Text("ملاحظات الحجز") },
-                    maxLines = 2
+                    maxLines = 2,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         },
@@ -491,7 +527,12 @@ fun BookingAddEditDialog(
                     } else {
                         val total = totalAmountText.toDoubleOrNull() ?: 0.0
                         val paid = paidAmountText.toDoubleOrNull() ?: 0.0
-                        onSave(bookingRef, selectedClientId, selectedTripId, bookingDate, status, total, paid, paymentStatus, notes)
+                        val computedPaymentStatus = when {
+                            paid >= total && total > 0 -> "مدفوع بالكامل"
+                            paid > 0 -> "مدفوع جزئيًا"
+                            else -> "غير مدفوع"
+                        }
+                        onSave(bookingRef, selectedClientId, selectedTripId, bookingDate, status, total, paid, computedPaymentStatus, notes)
                     }
                 }
             ) {

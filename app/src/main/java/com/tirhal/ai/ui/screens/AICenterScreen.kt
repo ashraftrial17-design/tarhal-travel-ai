@@ -462,8 +462,12 @@ fun AISuggestionCard(
 
                 Button(
                     onClick = {
-                        val cleanPhone = phone.replace("+", "").replace(" ", "")
-                        val uri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(suggestedMessage)}")
+                        val cleanPhone = phone.replace(Regex("[^0-9]"), "")
+                        val uri = if (cleanPhone.isNotBlank()) {
+                            Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(suggestedMessage)}")
+                        } else {
+                            Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(suggestedMessage)}")
+                        }
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         try {
                             context.startActivity(intent)
