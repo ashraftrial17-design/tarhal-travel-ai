@@ -2,7 +2,7 @@ name: Android APK Packaging & Distribution
 
 on:
   push:
-    branches: [ "Main", "stage-12-apk-packaging-distribution*" ]
+    branches: [ "Main", "stage-12-installable-debug-apk" ]
   pull_request:
     branches: [ "Main" ]
   workflow_dispatch:
@@ -37,7 +37,23 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      - name: Upload Debug APK Artifact
+      - name: Verify Debug APK Signature and Integrity
+        run: |
+          DEBUG_APK="app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$DEBUG_APK" ]; then
+            echo "Error: Debug APK not found at $DEBUG_APK"
+            exit 1
+          fi
+          echo "Debug APK found successfully."
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | head -n 1)
+          if [ -x "$APKSIGNER" ]; then
+            echo "Verifying Debug APK signature with $APKSIGNER..."
+            $APKSIGNER verify --verbose --print-certs "$DEBUG_APK"
+          else
+            echo "apksigner tool not found; skipping apksigner check."
+          fi
+
+      - name: Upload Installable Debug APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: tarhal-debug-apk
