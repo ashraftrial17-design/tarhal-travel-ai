@@ -21,18 +21,7 @@ android {
         }
     }
 
-    signingConfigs {
-        getByName("debug") {
-            enableV1Signing = true
-            enableV2Signing = true
-        }
-    }
-
     buildTypes {
-        debug {
-            isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
-        }
         release {
             isMinifyEnabled = false
             proguardFiles(
