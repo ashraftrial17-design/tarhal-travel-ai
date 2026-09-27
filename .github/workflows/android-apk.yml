@@ -1,0 +1,117 @@
+name: Android APK Packaging & Distribution
+
+on:
+  push:
+    branches: [ "Main", "stage-12-*" ]
+  pull_request:
+    branches: [ "Main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew test
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
+
+      - name: Rigorous APK Inspection & Verification
+        run: |
+          DEBUG_APK="app/build/outputs/apk/debug/app-debug.apk"
+          if [ ! -f "$DEBUG_APK" ]; then
+            echo "::error::Debug APK not found at $DEBUG_APK"
+            exit 1
+          fi
+
+          echo "=== 1. ZIP Archive & DEX Structure Integrity Check ==="
+          unzip -t "$DEBUG_APK" || {
+            echo "::error::APK Zip archive integrity check failed!"
+            exit 1
+          }
+
+          echo "=== 2. File Metrics & SHA-256 Checksum ==="
+          ls -lh "$DEBUG_APK"
+          BUILD_SHA=$(sha256sum "$DEBUG_APK" | awk '{print $1}')
+          echo "BUILT_APK_SHA256=$BUILD_SHA"
+
+          echo "=== 3. Locating Android Build-Tools ==="
+          AAPT=$(find $ANDROID_HOME/build-tools -name aapt | sort -V | tail -n 1)
+          APKSIGNER=$(find $ANDROID_HOME/build-tools -name apksigner | sort -V | tail -n 1)
+          ZIPALIGN=$(find $ANDROID_HOME/build-tools -name zipalign | sort -V | tail -n 1)
+
+          if [ -z "$AAPT" ] || [ -z "$APKSIGNER" ] || [ -z "$ZIPALIGN" ]; then
+            echo "::error::Required Android SDK build-tools (aapt, apksigner, zipalign) not found."
+            exit 1
+          fi
+
+          echo "=== 4. AAPT Badging & Manifest Verification ==="
+          BADGING=$($AAPT dump badging "$DEBUG_APK")
+          echo "$BADGING"
+          echo "$BADGING" | grep -q "package: name='com.tirhal.ai'" || {
+            echo "::error::Package name mismatch in APK manifest!"
+            exit 1
+          }
+          echo "$BADGING" | grep -q "launchable-activity: name='com.tirhal.ai.MainActivity'" || {
+            echo "::error::Launcher activity com.tirhal.ai.MainActivity not found in APK manifest!"
+            exit 1
+          }
+
+          echo "=== 5. Zip Alignment Check ==="
+          $ZIPALIGN -c -v 4 "$DEBUG_APK" || {
+            echo "::error::Zip alignment check failed!"
+            exit 1
+          }
+
+          echo "=== 6. APKSIGNER Signature Scheme Verification ==="
+          $APKSIGNER verify --verbose --print-certs "$DEBUG_APK" || {
+            echo "::error::APK signature verification failed!"
+            exit 1
+          }
+
+          echo "=== 7. Staging Copy & Artifact Matching Verification ==="
+          mkdir -p staging
+          cp "$DEBUG_APK" staging/app-debug.apk
+          STAGED_SHA=$(sha256sum staging/app-debug.apk | awk '{print $1}')
+          echo "STAGED_APK_SHA256=$STAGED_SHA"
+
+          if [ "$BUILD_SHA" != "$STAGED_SHA" ]; then
+            echo "::error::Artifact SHA-256 mismatch! Built: $BUILD_SHA vs Staged: $STAGED_SHA"
+            exit 1
+          fi
+          echo "Artifact SHA-256 matching confirmed successfully: $BUILD_SHA"
+
+      - name: Upload Installable Debug APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarhal-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload Release APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tarhal-release-apk
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
