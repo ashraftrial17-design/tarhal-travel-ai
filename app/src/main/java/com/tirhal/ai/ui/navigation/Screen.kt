@@ -2,6 +2,7 @@ package com.tirhal.ai.ui.navigation
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Home
@@ -23,6 +24,7 @@ sealed class Screen(
     object TravelerTracking : Screen("traveler_tracking", R.string.nav_traveler_tracking, Icons.Default.TrackChanges)
     object DigitalMarketing : Screen("digital_marketing", R.string.nav_digital_marketing, Icons.Default.Campaign)
     object OperationsCenter : Screen("operations_center", R.string.nav_operations_center, Icons.Default.Analytics)
+    object ReportsAnalytics : Screen("reports_analytics", R.string.nav_reports_analytics, Icons.Default.Assessment)
     object AICenter : Screen("ai_center", R.string.nav_ai_center, Icons.Default.Psychology)
     object Settings : Screen("settings", R.string.nav_settings, Icons.Default.Settings)
 
@@ -34,6 +36,7 @@ sealed class Screen(
             TravelerTracking,
             DigitalMarketing,
             OperationsCenter,
+            ReportsAnalytics,
             AICenter,
             Settings
         )
