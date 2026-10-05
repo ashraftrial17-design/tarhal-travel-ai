@@ -2,6 +2,9 @@ package com.tirhal.ai
 
 import com.tirhal.ai.data.local.entity.BookingEntity
 import com.tirhal.ai.data.local.entity.ClientEntity
+import com.tirhal.ai.data.local.entity.FollowUpActionEntity
+import com.tirhal.ai.data.local.entity.TravelerEntity
+import com.tirhal.ai.data.local.entity.TravelerRatingEntity
 import com.tirhal.ai.data.local.entity.TripEntity
 import com.tirhal.ai.ui.navigation.Screen
 import org.json.JSONArray
@@ -155,5 +158,38 @@ class ReleaseReadinessTest {
         assertEquals("مجدولة", trip.status)
         assertEquals(null, trip.departureTime)
         assertEquals(null, trip.carrierCompany)
+    }
+
+    @Test
+    fun testSeedEntitiesForeignKeyMapping() {
+        val client = ClientEntity(
+            id = 1L,
+            fullName = "أحمد محمد العلي",
+            phoneNumber = "+966501234567"
+        )
+        val traveler = TravelerEntity(
+            id = 10L,
+            clientId = client.id,
+            fullName = client.fullName,
+            phoneNumber = client.phoneNumber
+        )
+        val followUp = FollowUpActionEntity(
+            travelerId = traveler.id,
+            bookingId = 100L,
+            actionType = "قبل الرحلة",
+            description = "تأكيد الموعد",
+            status = "معلقة",
+            dueDate = "2025-03-14"
+        )
+        val rating = TravelerRatingEntity(
+            travelerId = traveler.id,
+            tripId = 200L,
+            ratingStars = 5,
+            ratingDate = "2025-03-15"
+        )
+
+        assertEquals(client.id, traveler.clientId)
+        assertEquals(traveler.id, followUp.travelerId)
+        assertEquals(traveler.id, rating.travelerId)
     }
 }
