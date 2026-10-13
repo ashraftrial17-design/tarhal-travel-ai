@@ -280,11 +280,13 @@ fun SettingsScreen() {
                                     for (i in 0 until clientsArr.length()) {
                                         val c = clientsArr.getJSONObject(i)
                                         val oldId = c.optLong("id", -1L)
+                                        val fullName = c.optString("fullName").ifBlank { "عميل" }
+                                        val phone = c.optString("phoneNumber").ifBlank { "0000000000" }
                                         val newId = database.clientDao().insertClient(
                                             ClientEntity(
-                                                fullName = c.getString("fullName"),
-                                                phoneNumber = c.getString("phoneNumber"),
-                                                whatsappNumber = c.optString("whatsappNumber").ifBlank { c.getString("phoneNumber") },
+                                                fullName = fullName,
+                                                phoneNumber = phone,
+                                                whatsappNumber = c.optString("whatsappNumber").ifBlank { phone },
                                                 email = c.optString("email").ifBlank { null },
                                                 address = c.optString("address").ifBlank { null },
                                                 preferredDestinations = c.optString("preferredDestinations").ifBlank { null },
@@ -308,15 +310,15 @@ fun SettingsScreen() {
                                         val oldId = t.optLong("id", -1L)
                                         val newId = database.tripDao().insertTrip(
                                             TripEntity(
-                                                tripCode = t.getString("tripCode"),
-                                                origin = t.getString("origin"),
-                                                destination = t.getString("destination"),
-                                                departureDate = t.getString("departureDate"),
+                                                tripCode = t.optString("tripCode", "TRP-AUTO"),
+                                                origin = t.optString("origin", "الرياض"),
+                                                destination = t.optString("destination", "جدة"),
+                                                departureDate = t.optString("departureDate", "2025-01-01"),
                                                 departureTime = t.optString("departureTime").ifBlank { null },
-                                                transportationType = t.getString("transportationType"),
+                                                transportationType = t.optString("transportationType", "طيران"),
                                                 carrierCompany = t.optString("carrierCompany").ifBlank { null },
-                                                price = t.getDouble("price"),
-                                                status = t.getString("status"),
+                                                price = t.optDouble("price", 0.0),
+                                                status = t.optString("status", "مجدولة"),
                                                 notes = t.optString("notes").ifBlank { null }
                                             )
                                         )
@@ -330,25 +332,27 @@ fun SettingsScreen() {
                                     val bookingsArr = root.getJSONArray("bookings")
                                     for (i in 0 until bookingsArr.length()) {
                                         val b = bookingsArr.getJSONObject(i)
-                                        val rawClientId = b.getLong("clientId")
-                                        val rawTripId = b.getLong("tripId")
+                                        val rawClientId = b.optLong("clientId", 0L)
+                                        val rawTripId = b.optLong("tripId", 0L)
 
                                         val targetClientId = clientIdMap[rawClientId] ?: rawClientId
                                         val targetTripId = tripIdMap[rawTripId] ?: rawTripId
 
-                                        database.bookingDao().insertBooking(
-                                            BookingEntity(
-                                                bookingReference = b.getString("bookingReference"),
-                                                clientId = targetClientId,
-                                                tripId = targetTripId,
-                                                bookingDate = b.getString("bookingDate"),
-                                                status = b.getString("status"),
-                                                totalAmount = b.getDouble("totalAmount"),
-                                                paidAmount = b.getDouble("paidAmount"),
-                                                paymentStatus = b.getString("paymentStatus"),
-                                                notes = b.optString("notes").ifBlank { null }
+                                        if (targetClientId > 0 && targetTripId > 0) {
+                                            database.bookingDao().insertBooking(
+                                                BookingEntity(
+                                                    bookingReference = b.optString("bookingReference", "BKG-RESTORE"),
+                                                    clientId = targetClientId,
+                                                    tripId = targetTripId,
+                                                    bookingDate = b.optString("bookingDate", "2025-01-01"),
+                                                    status = b.optString("status", "مؤكد"),
+                                                    totalAmount = b.optDouble("totalAmount", 0.0),
+                                                    paidAmount = b.optDouble("paidAmount", 0.0),
+                                                    paymentStatus = b.optString("paymentStatus", "غير مدفوع"),
+                                                    notes = b.optString("notes").ifBlank { null }
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
 

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -141,6 +140,7 @@ fun HomeScreen(
                 Screen.TravelerTracking,
                 Screen.DigitalMarketing,
                 Screen.OperationsCenter,
+                Screen.ReportsAnalytics,
                 Screen.AICenter,
                 Screen.Settings
             )
@@ -282,6 +282,7 @@ fun SectionScreen(
             Screen.TravelerTracking -> R.string.traveler_tracking_desc
             Screen.DigitalMarketing -> R.string.digital_marketing_desc
             Screen.OperationsCenter -> R.string.operations_center_desc
+            Screen.ReportsAnalytics -> R.string.reports_analytics_desc
             Screen.AICenter -> R.string.ai_center_desc
             Screen.Settings -> R.string.settings_desc
             else -> R.string.section_under_dev

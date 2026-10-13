@@ -58,7 +58,6 @@ fun FollowUpTrackingScreen() {
     val clientsList by database.clientDao().getAllClients().collectAsState(initial = emptyList())
     val bookingsList by database.bookingDao().getAllBookings().collectAsState(initial = emptyList())
     val followUpsList by database.followUpActionDao().getAllFollowUpActions().collectAsState(initial = emptyList())
-    val ratingsList by database.travelerRatingDao().getAllRatings().collectAsState(initial = emptyList())
 
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     val tabs = listOf("ماذا أفعل اليوم؟", "متابعة المبالغ المتبقية", "متابعة ما بعد السفر", "المتوقع عودتهم للسفر")
@@ -92,7 +91,7 @@ fun FollowUpTrackingScreen() {
         when (selectedTabIndex) {
             0 -> TodayActionsSection(clientsList, followUpsList, context)
             1 -> PendingPaymentsSection(clientsList, bookingsList, context)
-            2 -> PostTripFollowUpSection(clientsList, bookingsList, ratingsList, context)
+            2 -> PostTripFollowUpSection(clientsList, bookingsList, context)
             3 -> ExpectedReturnSection(clientsList, bookingsList, context)
         }
     }
@@ -176,7 +175,6 @@ fun PendingPaymentsSection(
 fun PostTripFollowUpSection(
     clients: List<ClientEntity>,
     bookings: List<com.tirhal.ai.data.local.entity.BookingEntity>,
-    ratings: List<com.tirhal.ai.data.local.entity.TravelerRatingEntity>,
     context: Context
 ) {
     val completedBookings = bookings.filter { it.status == "مكتمل" }
@@ -301,8 +299,12 @@ fun FollowUpCardItem(
 
                 Button(
                     onClick = {
-                        val cleanPhone = phoneNumber.replace("+", "").replace(" ", "")
-                        val uri = Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(message)}")
+                        val cleanPhone = phoneNumber.replace(Regex("[^0-9]"), "")
+                        val uri = if (cleanPhone.isNotBlank()) {
+                            Uri.parse("https://api.whatsapp.com/send?phone=$cleanPhone&text=${Uri.encode(message)}")
+                        } else {
+                            Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(message)}")
+                        }
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         try {
                             context.startActivity(intent)
