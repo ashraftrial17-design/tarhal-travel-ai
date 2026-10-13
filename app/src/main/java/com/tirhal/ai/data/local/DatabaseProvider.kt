@@ -70,7 +70,7 @@ object DatabaseProvider {
         val followUpDao = database.followUpActionDao()
         val ratingDao = database.travelerRatingDao()
 
-        // Prevent duplicate seeding
+        // Prevent duplicate seeding if data already exists
         if (clientDao.getAllClients().first().isNotEmpty()) {
             return
         }
@@ -123,7 +123,7 @@ object DatabaseProvider {
                 )
             )
 
-            // 2. Seed corresponding Travelers linked to Clients
+            // 2. Seed corresponding Travelers linked to Clients to satisfy Foreign Key constraints
             val travelerId1 = travelerDao.insertTraveler(
                 TravelerEntity(
                     clientId = clientId1,
@@ -234,7 +234,7 @@ object DatabaseProvider {
                 )
             )
 
-            // 5. Seed Follow-up Actions (using valid travelerId references)
+            // 5. Seed Follow-up Actions using valid travelerId references from travelers table
             followUpDao.insertAction(
                 FollowUpActionEntity(
                     travelerId = travelerId1,
@@ -258,7 +258,7 @@ object DatabaseProvider {
                 )
             )
 
-            // 6. Seed Ratings (using valid travelerId references)
+            // 6. Seed Ratings using valid travelerId references from travelers table
             ratingDao.insertRating(
                 TravelerRatingEntity(
                     travelerId = travelerId3,
